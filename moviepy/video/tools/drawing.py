@@ -5,10 +5,9 @@ methods that are difficult to do with the existing Python libraries.
 
 import numpy as np
 
-
-def blit(im1, im2, pos=None, mask=None, ismask=False):
+def blit(im1, im2, pos=None, im2_mask=None, mask=None, ismask=False):
     """ Blit an image over another.
-    
+
     Blits ``im1`` on ``im2`` as position ``pos=(x,y)``, using the
     ``mask`` if provided. If ``im1`` and ``im2`` are mask pictures
     (2D float arrays) then ``ismask`` must be ``True``.
@@ -31,23 +30,32 @@ def blit(im1, im2, pos=None, mask=None, ismask=False):
     yp1 = max(0, yp)
 
     if (xp1 >= xp2) or (yp1 >= yp2):
-        return im2
+        return im2, im2_mask
 
     blitted = im1[y1:y2, x1:x2]
 
     new_im2 = +im2
+    new_im2_mask = +im2_mask if im2_mask is not None else None
 
     if mask is None:
         new_im2[yp1:yp2, xp1:xp2] = blitted
+        if new_im2_mask is not None:
+            new_im2_mask[yp1:yp2, xp1:xp2] = 1.0
     else:
+        if new_im2_mask is None:
+            new_im2_mask = np.ones(im2.shape[:2])
         mask = mask[y1:y2, x1:x2]
+        blit_region_mask = new_im2_mask[yp1:yp2, xp1:xp2]
         if len(im1.shape) == 3:
             mask = np.dstack(3 * [mask])
-        blit_region = new_im2[yp1:yp2, xp1:xp2]
-        new_im2[yp1:yp2, xp1:xp2] = (1.0 * mask * blitted + (1.0 - mask) * blit_region)
-    
-    return new_im2.astype('uint8') if (not ismask) else new_im2
+            blit_region_mask = np.dstack(3 * [blit_region_mask])
 
+        blit_region = new_im2[yp1:yp2, xp1:xp2]
+        alpha = 1.0 * mask + blit_region_mask * (1 - mask)
+        new_im2[yp1:yp2, xp1:xp2] = (1.0 * mask * blitted + blit_region * blit_region_mask * (1 - mask)) / np.clip(alpha, 1e-7, 1)
+        new_im2_mask[yp1:yp2, xp1:xp2] = alpha[:,:,0]
+
+    return (new_im2.astype(np.uint8) if (not ismask) else new_im2), new_im2_mask
 
 
 def color_gradient(size,p1,p2=None,vector=None, r=None, col1=0,col2=1.0,

@@ -140,7 +140,8 @@ class VideoClip(Clip):
                         rewrite_audio=True, remove_temp=True,
                         write_logfile=False, verbose=True,
                         threads=None, ffmpeg_params=None,
-                        logger='bar'):
+                        logger='bar',
+                        withmask=False):
         """Write the clip to a videofile.
 
         Parameters
@@ -304,7 +305,8 @@ class VideoClip(Clip):
                            audiofile=audiofile,
                            verbose=verbose, threads=threads,
                            ffmpeg_params=ffmpeg_params,
-                           logger=logger)
+                           logger=logger,
+                           withmask=withmask)
 
         if remove_temp and make_audio:
             if os.path.exists(audiofile):
@@ -509,7 +511,7 @@ class VideoClip(Clip):
             post_array = np.hstack((post_array, x_1))
         return post_array
 
-    def blit_on(self, picture, t):
+    def blit_on(self, picture, picture_mask, t):
         """
         Returns the result of the blit of the clip's frame at time `t`
         on the given `picture`, the position of the clip being given
@@ -518,7 +520,8 @@ class VideoClip(Clip):
         hf, wf = framesize = picture.shape[:2]
 
         if self.ismask and picture.max():
-            return np.minimum(1, picture + self.blit_on(np.zeros(framesize), t))
+            img, _ = self.blit_on(np.zeros(framesize), None, t)
+            return np.minimum(1, picture + img), None
 
         ct = t - self.start  # clip time
 
@@ -561,7 +564,7 @@ class VideoClip(Clip):
 
         pos = map(int, pos)
 
-        return blit(img, picture, pos, mask=mask, ismask=self.ismask)
+        return blit(img, picture, pos, im2_mask=picture_mask, mask=mask, ismask=self.ismask)
 
     def add_mask(self):
         """Add a mask VideoClip to the VideoClip.

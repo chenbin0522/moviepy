@@ -112,10 +112,17 @@ def resize(clip, newsize=None, height=None, width=None, apply_to_mask=True):
                 
                 fun = lambda gf,t: resizer(gf(t).astype('uint8'),
                                           newsize2(t))
-                
-            return clip.fl(fun, keep_duration=True,
-                           apply_to= (["mask"] if apply_to_mask else []))
-            
+
+            #############################################################
+            # 修改，原因: mask获取的图像被转为了整形，丢掉了透明度信息
+            # 原代码
+            # return clip.fl(fun, keep_duration=True,
+            #                apply_to= (["mask"] if apply_to_mask else []))
+            newclip = clip.fl(fun)
+            if apply_to_mask and clip.mask is not None:
+                newclip.mask = resize(clip.mask, newsize, apply_to_mask=False)
+            return newclip
+            ################################################################
         else:
             
             newsize = trans_newsize(newsize)

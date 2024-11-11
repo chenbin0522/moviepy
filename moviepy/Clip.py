@@ -468,7 +468,9 @@ class Clip:
                      for frame in myclip.iter_frames()])
         """
         logger = proglog.default_bar_logger(logger)
-        for t in logger.iter_bar(t=np.arange(0, self.duration, 1.0/fps)):
+        # for t in logger.iter_bar(t=np.arange(0, self.duration, 1.0/fps)):
+        for frame_index in logger.iter_bar(t=np.arange(0, int(self.duration * fps))):
+            t = frame_index / fps
             frame = self.get_frame(t)
             if (dtype is not None) and (frame.dtype != dtype):
                 frame = frame.astype(dtype)

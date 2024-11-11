@@ -36,7 +36,10 @@ class FFMPEG_VideoReader:
                                    fps_source)
         self.fps = infos['video_fps']
         self.size = infos['video_size']
-        self.rotation = infos['video_rotation']
+        # self.rotation = infos['video_rotation']
+        self.rotation = abs(infos.get("video_rotation", 0))
+        if self.rotation in [90, 270]:
+            self.size = [self.size[1], self.size[0]]
 
         if target_resolution:
             # revert the order, as ffmpeg used (width, height)
@@ -291,7 +294,7 @@ def ffmpeg_parse_infos(filename, print_infos=False, check_duration=True,
                               filename, infos))
 
     # get the output line that speaks about video
-    lines_video = [l for l in lines if ' Video: ' in l and re.search('\d+x\d+', l)]
+    lines_video = [l for l in lines if ' Video: ' in l and re.search(r'\d+x\d+', l)]
 
     result['video_found'] = ( lines_video != [] )
 
@@ -364,13 +367,20 @@ def ffmpeg_parse_infos(filename, print_infos=False, check_duration=True,
 
         # get the video rotation info.
         try:
-            rotation_lines = [l for l in lines if 'rotate          :' in l and re.search('\d+$', l)]
+            rotation_lines = [l for l in lines if 'rotate          :' in l and re.search(r'\d+$', l)]
             if len(rotation_lines):
                 rotation_line = rotation_lines[0]
-                match = re.search('\d+$', rotation_line)
+                match = re.search(r'\d+$', rotation_line)
                 result['video_rotation'] = int(rotation_line[match.start() : match.end()])
             else:
-                result['video_rotation'] = 0
+                # 新版本ffmpeg无法适配翻转角度的问题
+                rotation_lines = [l for l in lines if 'rotation of' in l and 'degrees' in l]
+                if rotation_lines:
+                    rotation_line = rotation_lines[0]
+                    match = re.search(r'[+-]?\d+(\.\d*)?', rotation_line)
+                    result['video_rotation'] = int(float(rotation_line[match.start(): match.end()]))
+                else:
+                    result['video_rotation'] = 0
         except:
             raise IOError(("MoviePy error: failed to read video rotation in file %s.\n"
                            "Here are the file infos returned by ffmpeg:\n\n%s")%(

@@ -77,6 +77,8 @@ class CompositeVideoClip(VideoClip):
         else:
             self.clips = clips
             self.bg = ColorClip(size, color=self.bg_color)
+            if transparent and not self.ismask:
+                self.bg.mask = ColorClip(size, color=0.0, ismask=True)
             self.created_bg = True
 
         
@@ -107,8 +109,11 @@ class CompositeVideoClip(VideoClip):
                 another. """
 
             f = self.bg.get_frame(t)
+            f_mask = None
+            if not self.ismask and self.bg.mask is not None:
+                f_mask = self.bg.mask.get_frame(t)
             for c in self.playing_clips(t):
-                    f = c.blit_on(f, t)
+                f, f_mask = c.blit_on(f, f_mask, t)
             return f
 
         self.make_frame = make_frame
